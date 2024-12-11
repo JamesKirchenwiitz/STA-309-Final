@@ -1,0 +1,123 @@
+---
+title: "STA309-midterm-infographic"
+author: "James Kirchenwitz"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = TRUE)
+library(tidyverse)
+library(caret)
+library(printr)
+library(mplot)
+library(nnet)  
+```
+
+# Part One:
+
+```{r}
+# Reading in data
+data <- read.csv('diabetes_data.csv')
+data <- data %>%
+  mutate(gender = as.factor(gender),
+         smoking_history = as.factor(smoking_history),
+         diabetes = as.factor(diabetes))
+#glimpse(data)
+
+# Training the data
+dataIndex <- createDataPartition(1:nrow(diamonds), p = 0.8)$Resample1
+data_train <- filter(data, row_number() %in% dataIndex)
+data_test <- filter(data, !row_number() %in% dataIndex)
+
+ctrl = trainControl(method = 'repeatedcv', number = 5, repeats = 10)
+
+set.seed(401)
+mod.glm <- train(diabetes ~ blood_glucose_level + HbA1c_level + bmi + smoking_history + 
+                heart_disease + hypertension + age + gender, 
+                data = data_train,
+                method="glm",
+                trControl=ctrl)
+# Deciding what variable are necassary for a best fit
+summary(mod.glm)
+```
+**After running the summary for the logistic model, it appears that the reduced model has significant predictors which are age, BMI, hemoglobin levels (HbA1c_level) and blood glucose levels.**
+
+
+
+# Visualizing predictors
+- We know from the logistic model that we should visualize how the significant predictors of age, BMI, hemoglobin levels and blood glucose levels impact the model.
+```{r}
+library(patchwork)
+ 
+
+
+hemo_plot <- ggplot(data, aes(x = HbA1c_level, y = diabetes)) +
+#  geom_jitter(height = 0, width = 0.2, alpha = .1) +
+  geom_boxplot() +
+  stat_summary(fun.y=mean, geom="point", shape=8, size=4, color = 'Red', ) +
+  annotate(geom = 'text', x = 5.4, y = 1.5, color = 'black', label = 'No Diabetes') +
+  annotate(geom = 'text', x = 6.7, y = 2.5, color = 'black', label = 'Diabetes') +
+  labs(x = 'Hemoglobin Levels',
+       y = 'Diabetes',
+       title = 'Hemoglobin Levels',
+       caption = "Figure visualizes the significance of hemoglobin levels and its relationship with diabetes. As we can see the higher the \nhemoglobin levels, the higher the odds of having diabetes. Hemoglobin levels of 7 or higher guarenteed diabetes in subject.") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5, face = 'bold'),
+        plot.caption = element_text(hjust = 0, color = 'grey50')) 
+
+
+age_plot <- ggplot(data, aes(x = age, y = diabetes)) +
+  geom_boxplot() +
+  stat_summary(fun.y=mean, geom="point", shape=8, size=4, color = 'Red', ) +
+  annotate(geom = 'text', x = 36, y = 1.5, color = 'black', label = 'No Diabetes') +
+  annotate(geom = 'text', x = 62, y = 2.5, color = 'black', label = 'Diabetes') +
+  labs(x = 'Age',
+       y = 'Diabetes',
+       title = 'Age',
+       caption = "Figure visualizes the significance of age and its relationship with diabetes. As we can see the higher the age, the higher \nthe odds of having diabetes. It appears in the data that you can have diabetes at any age, but the mean is at age 63. Therefor \nthe older you are the higher the risk.") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5, face = 'bold'),
+        plot.caption = element_text(hjust = 0, color = 'grey50')) 
+
+bmi_plot <- ggplot(data, aes(x = bmi, y = diabetes)) +
+#  geom_jitter(height = 0, width = 0.2, alpha = .1) +
+  geom_boxplot() +
+  stat_summary(fun.y=mean, geom="point", shape=8, size=4, color = 'Red', ) +
+  annotate(geom = 'text', x = 27, y = 1.5, color = 'black', label = 'No Diabetes') +
+  annotate(geom = 'text', x = 31.5, y = 2.5, color = 'black', label = 'Diabetes') +
+  labs(x = 'Body Mass Index',
+       y = 'Diabetes',
+       title = 'Body Mass Index (BMI)',
+       caption = "Figure visualizes the significance of BMI and its relationship with diabetes. As we can see the higher the BMI, the higher \nthe odds of having diabetes, although not by much. BMI has a lot of outliers, but based off the mean a higher BMI is worse for \ndiabetes than a lower BMI.") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5, face = 'bold'),
+        plot.caption = element_text(hjust = 0, color = 'grey50')) 
+
+bgl_plot <- ggplot(data, aes(x = blood_glucose_level, y = diabetes)) +
+  geom_boxplot() +
+  stat_summary(fun.y=mean, geom="point", shape=8, size=4, color = 'Red', ) +
+  annotate(geom = 'text', x = 125, y = 1.5, color = 'black', label = 'No Diabetes') +
+  annotate(geom = 'text', x = 190, y = 2.5, color = 'black', label = 'Diabetes') +
+  labs(x = 'Blood Glucose Level',
+       y = 'Diabetes',
+       title = 'Glucose Concentrations',
+       caption = "Figure visualizes the significance of blood glucose levels and its relationship with diabetes. As we can see the \nhigher the glucose level, the higher the odds of having diabetes. It appears in the data that you can have diabetes at \nany higher concentration of glucose.") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5, face = 'bold'),
+        plot.caption = element_text(hjust = 0, color = 'grey50')) 
+
+plot <- (age_plot + hemo_plot) / (bmi_plot + bgl_plot) +
+  plot_annotation(
+    title="Significant Predictors and their Relationship with Diabetes",
+    subtitle="In-depth Analysis of Significant Diabetes Predictors",
+    
+    caption="What does this mean? As deduced from the graphs, it is important to take note of all personal body metrics. If you have abnormally high hemoglobin or glucose levels, reaching out to a healthcare specalist \ncould be vital in deducing whether or not diabetes is at fault. All figures share the same metric, where boxplots work as normal, with mean indicated by red asteriks. ",
+    theme = theme(plot.title = element_text(hjust = 0.5, face = 'bold'),
+                  plot.subtitle = element_text(hjust = 0.5, color = 'grey50'),
+                  plot.caption = element_text(color = 'grey25', size = 8))) 
+#  theme(plot.title = element_text(hjust = 0.5, face = 'bol = d', size20))
+#plot
+ggsave('Diabetes_Analysis.png', plot = plot, height = 10, width = 16)
+
+```
